@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import express from 'express';
 import { apiRouter } from './api.ts';
+import { memoryBudget } from './testBudget.ts';
 import { readScope, ScopeError, validateMessages, validateOutput } from './harness.ts';
 
 const circle = {
@@ -60,7 +61,7 @@ test('HTTP harness blocks unrelated tasks, isolates generator input and reviews 
     originalKey = process.env.GEMINI_API_KEY;
   process.env.GEMINI_API_KEY = 'test-placeholder';
   const app = express();
-  app.use('/api', apiRouter());
+  app.use('/api', apiRouter(memoryBudget()));
   const server = await new Promise<ReturnType<typeof app.listen>>((resolve) => {
     const s = app.listen(0, '127.0.0.1', () => resolve(s));
   });
@@ -74,7 +75,10 @@ test('HTTP harness blocks unrelated tasks, isolates generator input and reviews 
     calls.push(JSON.parse(String(options?.body)));
     const value = responses.shift();
     return new Response(
-      JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(value) }] } }] }),
+      JSON.stringify({
+        usageMetadata: { totalTokenCount: 100 },
+        candidates: [{ content: { parts: [{ text: JSON.stringify(value) }] } }],
+      }),
       { status: 200 },
     );
   }) as typeof fetch;

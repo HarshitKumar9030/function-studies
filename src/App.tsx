@@ -102,6 +102,39 @@ export function App() {
     const timer = setTimeout(() => setNotice(''), 4000);
     return () => clearTimeout(timer);
   }, [notice]);
+  useEffect(() => {
+    const keydown = (event: KeyboardEvent) => {
+      if (
+        screen !== 'explore' ||
+        recording ||
+        event.repeat ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        document.querySelector('dialog[open]')
+      )
+        return;
+      const target = event.target as HTMLElement;
+      if (
+        target.closest(
+          'input,textarea,select,button,a,video,audio,[contenteditable="true"],summary',
+        )
+      )
+        return;
+      if (event.code === 'Space') {
+        event.preventDefault();
+        setPlaying((value) => !value);
+      } else if (event.key.toLowerCase() === 'r') {
+        setView((value) => value + 1);
+      } else if (event.key === '[') {
+        setSpeed((value) => [0.25, 0.5, 1, 2][Math.max(0, [0.25, 0.5, 1, 2].indexOf(value) - 1)]);
+      } else if (event.key === ']') {
+        setSpeed((value) => [0.25, 0.5, 1, 2][Math.min(3, [0.25, 0.5, 1, 2].indexOf(value) + 1)]);
+      }
+    };
+    window.addEventListener('keydown', keydown);
+    return () => window.removeEventListener('keydown', keydown);
+  }, [screen, recording]);
   const select = (next: string) => {
     setId(next);
     setProgress(0.125);
@@ -271,6 +304,7 @@ export function App() {
               <div className="playback">
                 <button
                   className="play-button"
+                  aria-keyshortcuts="Space"
                   aria-label={playing ? 'Pause animation' : 'Play animation'}
                   onClick={() => setPlaying((v) => !v)}
                 >
@@ -315,6 +349,7 @@ export function App() {
                     value={speed}
                     onChange={(e) => setSpeed(+e.target.value)}
                   >
+                    <option value="0.25">0.25×</option>
                     <option value="0.5">0.5×</option>
                     <option value="1">1×</option>
                     <option value="2">2×</option>
@@ -384,6 +419,14 @@ export function App() {
                 </div>
               </section>
             </section>
+            <details className="keyboard-help">
+              <summary>Keyboard shortcuts</summary>
+              <p>
+                <kbd>Space</kbd> Play / pause · <kbd>R</kbd> Reset view · <kbd>[</kbd> Slower ·{' '}
+                <kbd>]</kbd> Faster · <kbd>←</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>→</kbd> Rotate a
+                focused graph
+              </p>
+            </details>
             <div id="custom-function">
               <CustomFunction
                 key={definition ? JSON.stringify(definition) : 'manual'}

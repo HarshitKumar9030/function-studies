@@ -10,6 +10,17 @@ test('Random functions remain real and drawable for repeated selections', () => 
     assert.ok(def.y.length <= 200 && def.x.length <= 200);
   }
 });
+test('Every random curve family is drawable, including hyperbolic and rational designs', () => {
+  const names = new Set<string>();
+  for (let index = 0; index < 22; index++) {
+    const def = randomFunction(() => (index + 0.5) / 22);
+    names.add(def.name);
+    assert.ok(
+      sampleFunction(createFunction(def), 1, 1).filter((point) => point.valid).length > 500,
+    );
+  }
+  assert.equal(names.size, 22);
+});
 test('Generated definitions reject invalid domains, unsupported code and empty curves', () => {
   const base: FunctionDefinition = {
     name: 'Test',

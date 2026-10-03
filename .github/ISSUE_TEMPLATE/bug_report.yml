@@ -1,0 +1,28 @@
+name: Bug report
+description: Something in the app is not working as expected.
+title: 'Bug: '
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe what you expected and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: Include the function, expressions and settings if relevant.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Browser and device
+      placeholder: Chrome on Windows, Safari on iPhone, etc.
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots or error messages
+      description: Remove API keys and connection strings before sharing.

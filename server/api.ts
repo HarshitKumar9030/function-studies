@@ -1,6 +1,7 @@
 import express from 'express';
 import { config } from 'dotenv';
 import { resolve } from 'node:path';
+import { publicBudget, BudgetError, tokenReservation, type BudgetStore } from './budget.ts';
 import {
   readScope,
   scopeInstruction,
@@ -13,6 +14,13 @@ config({ path: resolve('.env.local'), quiet: true });
 if (!process.env.GEMINI_API_KEY && !process.env.VERCEL)
   config({ path: resolve('../.env.local'), quiet: true });
 const model = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+class ProviderError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
 const functionSchema = {
   type: 'object',
   properties: {
@@ -41,33 +49,50 @@ async function generate(
   input: unknown,
   responseSchema: unknown,
   signal: AbortSignal,
+  budget?: BudgetStore,
 ) {
+  const body = {
+    systemInstruction: { parts: [{ text: instructions }] },
+    contents: [{ role: 'user', parts: [{ text: JSON.stringify(input) }] }],
+    generationConfig: {
+      responseMimeType: 'application/json',
+      responseJsonSchema: responseSchema,
+      maxOutputTokens: 2500,
+    },
+  };
+  const reservation = budget
+    ? await budget.reserve(tokenReservation(body, 2500)).catch((error) => {
+        if (error instanceof BudgetError) throw error;
+        throw new BudgetError(
+          503,
+          'The public allowance could not be checked. Please try again or use your own API key.',
+        );
+      })
+    : undefined;
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
       signal,
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: instructions }] },
-        contents: [{ role: 'user', parts: [{ text: JSON.stringify(input) }] }],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          responseJsonSchema: responseSchema,
-          maxOutputTokens: 2500,
-        },
-      }),
+      body: JSON.stringify(body),
     },
   );
   if (!response.ok)
-    throw new Error(
+    throw new ProviderError(
+      response.status === 429 ? 429 : 502,
       response.status === 429
         ? 'The assistant is busy or its quota is exhausted. Try again shortly.'
         : response.status === 401 || response.status === 403
-          ? 'The assistant API key was rejected. Check the server configuration.'
+          ? 'The selected API key was rejected. Check the key and its permissions.'
           : 'The assistant is unavailable. Please try again.',
     );
   const data = await response.json();
+  if (budget && reservation) {
+    const usage = data.usageMetadata?.totalTokenCount;
+    // A failed settlement leaves the full reservation in place, preserving the cap.
+    await budget.settle(reservation, usage).catch(() => undefined);
+  }
   const text = data.candidates?.[0]?.content?.parts
     ?.filter((p: { text?: string; thought?: boolean }) => p.text && !p.thought)
     .map((p: { text: string }) => p.text)
@@ -75,10 +100,19 @@ async function generate(
   if (!text) throw new Error('No function was returned. Try rephrasing the request.');
   return JSON.parse(text);
 }
-export function apiRouter() {
+export function apiRouter(budget: BudgetStore = publicBudget) {
   const router = express.Router();
   router.use(express.json({ limit: '24kb' }));
-  router.get('/status', (_req, res) => res.json({ configured: !!process.env.GEMINI_API_KEY }));
+  router.get('/status', async (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    let quota;
+    try {
+      quota = await budget.snapshot();
+    } catch {
+      quota = null;
+    }
+    res.json({ configured: !!process.env.GEMINI_API_KEY && !!quota, quota, byok: true });
+  });
   router.post('/function', async (req, res) => {
     let messages;
     try {
@@ -89,7 +123,12 @@ export function apiRouter() {
         .json({ error: error instanceof Error ? error.message : 'Invalid request.' });
       return;
     }
-    const key = process.env.GEMINI_API_KEY;
+    const supplied = req.get('X-Function-API-Key');
+    if (supplied && (supplied.length < 20 || supplied.length > 200 || /[\r\n\s]/.test(supplied))) {
+      res.status(400).json({ error: 'Enter a valid API key.' });
+      return;
+    }
+    const key = supplied || process.env.GEMINI_API_KEY;
     if (!key) {
       res.status(503).json({
         error:
@@ -110,11 +149,19 @@ export function apiRouter() {
           { task: 'input review', messages },
           scopeSchema,
           controller.signal,
+          supplied ? undefined : budget,
         ),
       );
       // The generator receives only the scope classifier's mathematical rewrite, never raw chat or role claims.
       const reply = validateReply(
-        await generate(key, instruction, { mathRequest }, schema, controller.signal),
+        await generate(
+          key,
+          instruction,
+          { mathRequest },
+          schema,
+          controller.signal,
+          supplied ? undefined : budget,
+        ),
       );
       readScope(
         await generate(
@@ -123,20 +170,31 @@ export function apiRouter() {
           { task: 'output review', reply },
           scopeSchema,
           controller.signal,
+          supplied ? undefined : budget,
         ),
         false,
       );
       res.json(reply);
     } catch (error) {
       if (!res.headersSent && !res.destroyed)
-        res.status(error instanceof ScopeError ? 422 : 502).json({
-          error:
-            error instanceof ScopeError
-              ? error.message
-              : error instanceof Error && error.name === 'AbortError'
-                ? 'The assistant took too long. Please try again.'
-                : 'The assistant could not produce a valid mathematical function. Try rephrasing your request.',
-        });
+        res
+          .status(
+            error instanceof BudgetError || error instanceof ProviderError
+              ? error.status
+              : error instanceof ScopeError
+                ? 422
+                : 502,
+          )
+          .json({
+            error:
+              error instanceof BudgetError || error instanceof ProviderError
+                ? error.message
+                : error instanceof ScopeError
+                  ? error.message
+                  : error instanceof Error && error.name === 'AbortError'
+                    ? 'The assistant took too long. Please try again.'
+                    : 'The assistant could not produce a valid mathematical function. Try rephrasing your request.',
+          });
     } finally {
       clearTimeout(timeout);
     }

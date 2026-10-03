@@ -9,7 +9,8 @@ test('Compiled API has no runtime imports of local TypeScript sources', async ()
 
 test('Both built Vercel endpoints boot and handle requests without a TypeScript loader', async () => {
   process.env.VERCEL = '1';
-  delete process.env.GEMINI_API_KEY;
+  process.env.GEMINI_API_KEY = '';
+  process.env.MONGODB_URI = '';
   const { default: status } = await import('../api/status.js');
   const { default: fn } = await import('../api/function.js');
   for (const app of [status, fn]) {
@@ -20,7 +21,7 @@ test('Both built Vercel endpoints boot and handle requests without a TypeScript 
       const base = `http://127.0.0.1:${server.address().port}/api`;
       const response = await fetch(`${base}/status`);
       assert.equal(response.status, 200);
-      assert.deepEqual(Object.keys(await response.json()), ['configured']);
+      assert.deepEqual(Object.keys(await response.json()), ['configured', 'quota', 'byok']);
       const invalid = await fetch(`${base}/function`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

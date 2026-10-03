@@ -1,0 +1,16 @@
+name: Feature request
+description: Suggest a useful addition or improvement.
+title: 'Feature: '
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like to do?
+      description: Explain the need and the behavior you have in mind.
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: Example or reference
+      description: A formula, sketch or concrete use case helps.

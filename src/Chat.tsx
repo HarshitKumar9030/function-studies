@@ -4,21 +4,54 @@ import { MathText } from './MathText';
 import { Markdown } from './Markdown';
 import type { FunctionSpec } from './functions';
 type Message = { role: 'user' | 'assistant'; content: string; definition?: FunctionDefinition };
+type Quota = {
+  limit: number;
+  used: number;
+  committed: number;
+  remaining: number;
+  resetsAt: string;
+};
 export function Chat({ onPlot }: { onPlot: (fn: FunctionSpec, def: FunctionDefinition) => void }) {
   const [messages, setMessages] = useState<Message[]>([]),
     [input, setInput] = useState(''),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
-    [configured, setConfigured] = useState<boolean | null>(null);
+    [configured, setConfigured] = useState<boolean | null>(null),
+    [quota, setQuota] = useState<Quota | null>(null),
+    [personalKey, setPersonalKey] = useState(''),
+    [keyDraft, setKeyDraft] = useState(''),
+    [keyError, setKeyError] = useState('');
+  const keyPanel = useRef<HTMLDetailsElement>(null);
   const controller = useRef<AbortController | null>(null),
     bottom = useRef<HTMLDivElement>(null),
     inputRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const outside = (event: PointerEvent) => {
+      if (keyPanel.current && !keyPanel.current.contains(event.target as Node))
+        keyPanel.current.open = false;
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && keyPanel.current?.open) {
+        keyPanel.current.open = false;
+        keyPanel.current.querySelector('summary')?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', outside);
+    document.addEventListener('keydown', escape);
+    return () => {
+      document.removeEventListener('pointerdown', outside);
+      document.removeEventListener('keydown', escape);
+    };
+  }, []);
   useEffect(() => {
     let alive = true;
     fetch('/api/status')
       .then((r) => r.json())
       .then((d) => {
-        if (alive) setConfigured(d.configured);
+        if (alive) {
+          setConfigured(d.configured);
+          setQuota(d.quota);
+        }
       })
       .catch(() => {
         if (alive) setConfigured(false);
@@ -48,7 +81,10 @@ export function Chat({ onPlot }: { onPlot: (fn: FunctionSpec, def: FunctionDefin
     try {
       const response = await fetch('/api/function', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(personalKey ? { 'X-Function-API-Key': personalKey } : {}),
+        },
         signal: abort.signal,
         body: JSON.stringify({
           messages: pending.slice(-19).map(({ role, content, definition }) => ({
@@ -75,6 +111,14 @@ export function Chat({ onPlot }: { onPlot: (fn: FunctionSpec, def: FunctionDefin
       setBusy(false);
       controller.current = null;
       inputRef.current?.focus();
+      if (!personalKey)
+        fetch('/api/status')
+          .then((r) => r.json())
+          .then((d) => {
+            setQuota(d.quota);
+            setConfigured(d.configured);
+          })
+          .catch(() => undefined);
     }
   }
   function submit(e: FormEvent) {
@@ -96,6 +140,97 @@ export function Chat({ onPlot }: { onPlot: (fn: FunctionSpec, def: FunctionDefin
           New chat
         </button>
       </div>
+      <details ref={keyPanel} className="assistant-access">
+        <summary className="access-trigger" aria-label="AI access settings">
+          <svg
+            viewBox="0 0 20 20"
+            width="14"
+            height="14"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.3"
+            aria-hidden="true"
+          >
+            <path d="M3 5h14M3 10h14M3 15h14" />
+            <circle cx="7" cy="5" r="2" fill="white" />
+            <circle cx="13" cy="10" r="2" fill="white" />
+            <circle cx="8" cy="15" r="2" fill="white" />
+          </svg>
+          AI access
+          {personalKey ? (
+            <span className="personal-key-dot" aria-label="Personal key active" />
+          ) : null}
+        </summary>
+        <div className="key-settings">
+          <div className="quota-status">
+            {personalKey
+              ? 'Using your key'
+              : quota
+                ? `${quota.remaining.toLocaleString()} / 500,000 public tokens available`
+                : 'Public assistant unavailable'}
+            <small>
+              {personalKey
+                ? 'Your provider usage applies.'
+                : 'Shared daily allowance · resets at midnight IST'}
+            </small>
+          </div>
+          <label htmlFor="personal-api-key">Your Google AI API key</label>
+          <input
+            id="personal-api-key"
+            type="password"
+            autoComplete="off"
+            spellCheck={false}
+            value={keyDraft}
+            onChange={(e) => {
+              setKeyDraft(e.target.value);
+              setKeyError('');
+            }}
+            placeholder="Paste your key"
+            disabled={busy}
+          />
+          <p>
+            Kept only in this tab’s memory. Sent to our server and Google for your requests, never
+            saved. Refreshing clears it.
+          </p>
+          {keyError ? (
+            <p role="alert" className="form-error">
+              {keyError}
+            </p>
+          ) : null}
+          <div>
+            <button
+              disabled={busy}
+              onClick={() => {
+                const key = keyDraft.trim();
+                if (key.length < 20 || key.length > 200 || /\s/.test(key)) {
+                  setKeyError('Enter a valid API key.');
+                  return;
+                }
+                setPersonalKey(key);
+                setKeyDraft('');
+                setKeyError('');
+                setError('');
+                if (keyPanel.current) keyPanel.current.open = false;
+              }}
+            >
+              Use key
+            </button>
+            {personalKey ? (
+              <button
+                disabled={busy}
+                onClick={() => {
+                  setPersonalKey('');
+                  setKeyDraft('');
+                  setError('');
+                  if (keyPanel.current) keyPanel.current.open = false;
+                }}
+              >
+                Remove key
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </details>
       <div className="chat-conversation">
         {messages.length === 0 ? (
           <div className="chat-welcome">
@@ -176,8 +311,8 @@ export function Chat({ onPlot }: { onPlot: (fn: FunctionSpec, def: FunctionDefin
         />
         <div>
           <span>
-            {configured === false
-              ? 'The function assistant is not configured on this server.'
+            {configured === false && !personalKey
+              ? 'Use your own key while the public assistant is unavailable.'
               : 'Enter to send · Shift + Enter for a new line'}
           </span>
           {busy ? (
