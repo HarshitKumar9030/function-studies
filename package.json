@@ -6,7 +6,10 @@
   "packageManager": "pnpm@10.17.0",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5178",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && pnpm build:server",
+    "build:server": "node scripts/build-server.mjs",
+    "vercel-build": "pnpm build",
+    "test:deployment": "node --test scripts/deployment.test.mjs",
     "preview": "vite preview --host 127.0.0.1 --port 4178",
     "test": "node --experimental-strip-types --test src/*.test.ts server/*.test.ts",
     "start": "node --experimental-strip-types server/start.ts",
@@ -32,6 +35,7 @@
     "@types/node": "^22.15.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
+    "esbuild": "^0.28.2",
     "prettier": "^3.9.9",
     "typescript": "^5.8.0",
     "vite": "^7.1.0"

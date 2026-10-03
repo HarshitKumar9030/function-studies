@@ -5,8 +5,9 @@
   "installCommand": "pnpm install --frozen-lockfile",
   "outputDirectory": "dist",
   "functions": {
-    "api/*.ts": {
-      "maxDuration": 60
+    "api/*.js": {
+      "maxDuration": 60,
+      "includeFiles": "server-build/**"
     }
   },
   "headers": [

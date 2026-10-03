@@ -68,6 +68,8 @@ Restart the server after changing the environment. The key stays on the server. 
 
 The graph runs in the browser. Only chat creation needs the server API. No database is required.
 
+The build also bundles the API and its local TypeScript dependencies into `server-build/api.js`. Vercel's JavaScript endpoints load that compiled file, and `vercel.json` explicitly includes it in both function packages. Run `pnpm test:deployment` after `pnpm build` to check the packaged entry points without a TypeScript loader.
+
 ## Assistant scope
 
 The assistant handles greetings, simple conversation, arithmetic, math explanations and function plots. Asking “what is 2+2?” or “what does sine do?” gets an answer without creating an unwanted graph. Requests pass through a separate scope review before generation. The generator receives a scoped rewrite rather than the raw chat, and its output is reviewed again before it reaches the browser. Substantive unrelated tasks and attempts to override instructions are refused.
