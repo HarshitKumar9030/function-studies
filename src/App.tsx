@@ -392,13 +392,30 @@ export function App() {
               />
             </div>
           </div>
-          <footer>
-            <a href="https://harshit.page" target="_blank" rel="noreferrer">
-              Made by Harshit Singh
+          <footer className="signature-footer">
+            <a
+              className="maker-signature"
+              href="https://harshit.page"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <svg className="signature-wave" viewBox="0 0 64 28" aria-hidden="true">
+                <path className="wave-guide" d="M0 14h64" />
+                <path
+                  className="wave-ink"
+                  d="M2 14C7 14 7 3 14 3S21 25 28 25 35 3 42 3 49 25 56 25 61 14 62 14"
+                />
+              </svg>
+              <span>
+                <small>Made by</small>
+                <span className="maker-name">
+                  Harshit Singh <span aria-hidden="true">↗</span>
+                </span>
+              </span>
             </a>
-            <a href="https://harshit.page" target="_blank" rel="noreferrer">
-              harshit.page ↗
-            </a>
+            <button className="footer-encore" onClick={impress}>
+              One more curve <span aria-hidden="true">↻</span>
+            </button>
           </footer>
         </main>
       </div>

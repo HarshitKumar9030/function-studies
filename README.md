@@ -1,6 +1,6 @@
 # Function Studies
 
-[![Status: Beta](https://img.shields.io/badge/status-beta-e5aa43)](#product-status) [![Version](https://img.shields.io/badge/version-0.1.0-222222)](package.json) [![Checks](https://github.com/HarshitKumar9030/function-studies/actions/workflows/checks.yml/badge.svg)](https://github.com/HarshitKumar9030/function-studies/actions/workflows/checks.yml) [![React](https://img.shields.io/badge/React-19-149eca)](https://react.dev) [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6)](https://www.typescriptlang.org) [![pnpm](https://img.shields.io/badge/pnpm-10-f69220)](https://pnpm.io) [![Vercel Ready](https://img.shields.io/badge/Vercel-ready-000000)](#deploy-on-vercel)
+[![Status: Released](https://img.shields.io/badge/status-released-477458)](#product-status) [![Version](https://img.shields.io/badge/version-1.0.0-222222)](package.json) [![Checks](https://github.com/HarshitKumar9030/function-studies/actions/workflows/checks.yml/badge.svg)](https://github.com/HarshitKumar9030/function-studies/actions/workflows/checks.yml) [![React](https://img.shields.io/badge/React-19-149eca)](https://react.dev) [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6)](https://www.typescriptlang.org) [![pnpm](https://img.shields.io/badge/pnpm-10-f69220)](https://pnpm.io) [![Vercel Ready](https://img.shields.io/badge/Vercel-ready-000000)](#deploy-on-vercel)
 
 See how functions move. A rotating point, a 3D curve and its two projections share the same animation, so you can follow the relationship between them.
 
@@ -19,7 +19,7 @@ See how functions move. A rotating point, a 3D curve and its two projections sha
 
 ## Product status
 
-**Beta · v0.1.0**
+**Released · v1.0.0**
 
 | Feature                                 | Status                                                   |
 | --------------------------------------- | -------------------------------------------------------- |

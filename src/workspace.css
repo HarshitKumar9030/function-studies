@@ -850,3 +850,116 @@ footer a:hover {
   border-top: 1px solid #ddd;
   margin: 18px 0;
 }
+.signature-footer {
+  align-items: center;
+  gap: 20px;
+  padding: 25px 0;
+}
+.maker-signature {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+.maker-signature:hover {
+  text-decoration: none;
+}
+.maker-signature small {
+  display: block;
+  color: #999;
+  font-size: 9px;
+  margin-bottom: 4px;
+}
+.maker-name {
+  font:
+    italic 18px 'STIX Two Text',
+    Georgia,
+    serif;
+  color: #333;
+}
+.maker-name > span {
+  display: inline-block;
+  font:
+    12px 'Inter Variable',
+    sans-serif;
+  margin-left: 5px;
+  color: #999;
+  transition: transform 250ms var(--ease-smooth-out);
+}
+.maker-signature:hover .maker-name > span {
+  transform: translate(2px, -2px);
+}
+.signature-wave {
+  width: 52px;
+  height: 28px;
+  fill: none;
+}
+.wave-guide {
+  stroke: #e2e2e2;
+  stroke-width: 1;
+}
+.wave-ink {
+  stroke: #444;
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-dasharray: 150;
+  stroke-dashoffset: 0;
+}
+.maker-signature:hover .wave-ink {
+  animation: sign-curve 800ms var(--ease-smooth-out);
+}
+@keyframes sign-curve {
+  from {
+    stroke-dashoffset: 150;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.footer-encore {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0 10px 12px;
+  border: 0;
+  background: transparent;
+  color: #888;
+  font:
+    10px 'Inter Variable',
+    sans-serif;
+}
+.footer-encore > span {
+  font-size: 17px;
+  display: inline-block;
+  transition: transform 400ms var(--ease-smooth-out);
+}
+.footer-encore:hover {
+  color: #222;
+  background: transparent;
+}
+.footer-encore:hover > span {
+  transform: rotate(90deg);
+}
+@media (max-width: 420px) {
+  .maker-signature {
+    gap: 10px;
+  }
+  .signature-wave {
+    width: 35px;
+  }
+  .maker-name {
+    font-size: 16px;
+  }
+  .footer-encore {
+    gap: 6px;
+    font-size: 9px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .maker-signature:hover .wave-ink {
+    animation: none;
+  }
+  .maker-name > span,
+  .footer-encore > span {
+    transition: none;
+  }
+}
